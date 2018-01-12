@@ -22,6 +22,8 @@ def main():
     project_names = os.listdir(config.repo_dir)
     # project_names = ['com.utyf.pmetro']
     ignore_done_list = False
+    if not os.path.exists(config.results_dir):
+        os.makedirs(config.results_dir)
     done_list_path = os.path.join(config.results_dir, 'done_list.txt')
     with open(done_list_path, 'a+') as done_list_file:
         projects_to_process = set(project_names)

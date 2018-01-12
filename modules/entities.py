@@ -21,6 +21,8 @@ class Project:
             else:
                 app_dir = ''
         self.app_path = os.path.join(self.path, app_dir)
+        if not os.path.exists(self.app_path):
+            self.app_path = self.path
 
     def get_app_dir(self, settings_gradle_content):
         match = re.search(r"include ('|\")([^'\"]*)('|\")", settings_gradle_content)
