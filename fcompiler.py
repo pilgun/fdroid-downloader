@@ -17,6 +17,26 @@ from modules.manifest import ManifestEditor, Manifest
 from conf import config
 from modules.project_filter import ProjectFilter
 
+# not tested yet
+def create_done_list_from_processed_apps():
+    generated_apps = [app[:-4] for app in os.listdir(config.results_dir) if app.endswith(".apk")]
+    instrumented_apps = set([app[:-13] for app in generated_apps if app.endswith("_instrumented")])
+    raw_apps = set(generated_apps) - set(instrumented_apps)
+    done_apps = raw_apps & instrumented_apps
+    save_done_list(done_apps)
+
+
+def save_done_list(done_apps):
+    if not os.path.exists(config.results_dir):
+        os.makedirs(config.results_dir)
+    done_list_path = os.path.join(config.results_dir, 'done_list.txt')
+    os.remove(done_list_path)
+    
+    with open(done_list_path, 'a+') as done_list_file:
+        for app in done_apps:
+            done_list_file.write(f'{app}: SUCCESS\n')
+        done_list_file.flush()
+
 
 def main():
     project_names = os.listdir(config.repo_dir)
@@ -50,21 +70,20 @@ def main():
 
                 project.gradle_version = GradleVersionExtractor(project).extract_gradle_version()
                 assembler = ApkAssembler(project)
-
                 gradle_editor = GradleEditor(project)
+                if not os.path.exists(os.path.join(config.results_dir, project.name + ".apk" )):
+                    apk = assembler.assemble_apk(is_instrumented=False)
+                    util.move_apk_to_results_dir(apk)
+                if not os.path.exists(os.path.join(config.results_dir, project.name + "_instrumented.apk")):
+                    manifest = Manifest(project)
+                    ManifestEditor(manifest).edit_manifest()
 
-                apk = assembler.assemble_apk(is_instrumented=False)
-                util.move_apk_to_results_dir(apk)
+                    InstrumentationHandler(project).add_instrumentation_files()
 
-                manifest = Manifest(project)
-                ManifestEditor(manifest).edit_manifest()
+                    gradle_editor.edit_build_file()
 
-                InstrumentationHandler(project).add_instrumentation_files()
-
-                gradle_editor.edit_build_file()
-
-                instrumented_apk = assembler.assemble_apk(is_instrumented=True)
-                util.move_apk_to_results_dir(instrumented_apk)
+                    instrumented_apk = assembler.assemble_apk(is_instrumented=True)
+                    util.move_apk_to_results_dir(instrumented_apk)
 
                 logging.info(f'{project.name}: SUCCESS')
                 done_list_file.write(f'{project.name}: SUCCESS\n')
@@ -105,4 +124,6 @@ def reset_project_state(project):
 
 if __name__ == '__main__':
     util.setup_logging()
+    #create_done_list_from_processed_apps()
     main()
+    
